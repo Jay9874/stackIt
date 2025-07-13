@@ -23,8 +23,9 @@ exports.getQuestionById = async (req, res) => {
         const ip =
             req.headers['x-forwarded-for']?.split(',').shift() ||
             req.socket?.remoteAddress;
+
         const cacheKey = `${id}:${ip}`;
-        const alreadyViewed = viewCache.get(cacheKey);
+        const alreadyViewed = await viewCache.get(cacheKey);
 
         if (!alreadyViewed) {
             await Question.updateOne(
@@ -32,7 +33,7 @@ exports.getQuestionById = async (req, res) => {
                 { $inc: { views: 1 } },
                 { timestamps: false }
             );
-            viewCache.set(cacheKey, true);
+            await viewCache.set(cacheKey, true);
             question.views += 1;
         }
 
@@ -109,6 +110,10 @@ exports.saveQuestion = async (req, res) => {
 
         const savedQuestion = question.toObject();
         savedQuestion._id = question._id;
+        savedQuestion.user = {
+            name: req.user.name,
+            avatar: req.user.avatar
+        };
 
         res.status(201).json({
             message: 'Question saved successfully',
