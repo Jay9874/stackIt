@@ -1,6 +1,6 @@
 const ImageKit = require('imagekit');
-const fs = require('fs');
 const Question = require('../models/Question');
+const viewCache = require('../utils/cache');
 
 const imagekit = new ImageKit({
     publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
@@ -18,6 +18,22 @@ exports.getQuestionById = async (req, res) => {
 
         if (!question) {
             return res.status(404).json({ message: 'Question not found' });
+        }
+
+        const ip =
+            req.headers['x-forwarded-for']?.split(',').shift() ||
+            req.socket?.remoteAddress;
+        const cacheKey = `${id}:${ip}`;
+        const alreadyViewed = viewCache.get(cacheKey);
+
+        if (!alreadyViewed) {
+            await Question.updateOne(
+                { _id: id },
+                { $inc: { views: 1 } },
+                { timestamps: false }
+            );
+            viewCache.set(cacheKey, true);
+            question.views += 1;
         }
 
         res.json(question);
@@ -43,16 +59,13 @@ exports.getAllQuestions = async (req, res) => {
 exports.uploadImage = async (req, res) => {
     try {
         const file = req.file;
-        const fileBuffer = fs.readFileSync(file.path);
 
         const uploadResult = await imagekit.upload({
-            file: fileBuffer,
+            file: file.buffer,
             fileName: file.originalname,
             tags: ['question-image'],
             folder: 'question-images',
         });
-
-        fs.unlinkSync(file.path);
 
         return res.status(200).json({ url: uploadResult.url });
     }
