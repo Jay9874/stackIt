@@ -21,6 +21,23 @@ const questionSchema = new mongoose.Schema({
     views: {
         type: Number,
         default: 0
+    },
+    upvotes: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    downvotes: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    acceptedAnswer: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Answer',
+        default: null
+    },
+    answerCount: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 
